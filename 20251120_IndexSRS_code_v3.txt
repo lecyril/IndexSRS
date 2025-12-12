@@ -1,0 +1,110 @@
+//backup - dernière version (v8)
+using System;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using VMS.TPS.Common.Model.API;
+using VMS.TPS.Common.Model.Types;
+[assembly: ESAPIScript(IsWriteable = true)]
+
+namespace VMS.TPS
+{
+    public class Script
+    {
+        public Script()
+        {
+        }
+
+        // objectifs cliniques
+        private const double LIMIT_CI_RTOG = 2;     
+        private const double LIMIT_CI_PADDICK = 0.8;    //Théoriquement 0.8, et 0.7 acceptable
+        private const double LIMIT_GI = 4;              //Théoriquement 3, et 4 acceptable
+        private const double LIMIT_MIN_HI_RTOG = 1.15;
+        private const double LIMIT_MAX_HI_RTOG = 1.3;
+
+
+
+        public void Execute(ScriptContext context)
+        {
+            var patient = context.Patient;
+            var course = context.Course;
+            var plan = context.PlanSetup;
+            var structureSet = plan.StructureSet;
+            var dose = plan.Dose;
+            var prescription = plan.DosePerFraction;
+
+            patient.BeginModifications(); //Peut-être pas nécessaire, car on ne modifie rien
+
+            var sb = new StringBuilder();
+            sb.AppendLine();
+            sb.AppendLine($"Plan : {plan.Id}");
+            sb.AppendLine(string.Format("Dose par fraction : {0:F2}", prescription));
+            
+            //sb.AppendLine("Objectifs : blabla");
+            sb.AppendLine();
+
+            // Structures nécessaires au calcul des indices
+            var PTVTotal = structureSet.Structures.FirstOrDefault(s =>
+                    s.Id.Equals("PTVTotal", StringComparison.OrdinalIgnoreCase));
+            var BODY = structureSet.Structures.FirstOrDefault(s =>
+                    s.Id.Equals("BODY", StringComparison.OrdinalIgnoreCase));
+
+            //Valeurs nécessaires au calcul des indices
+            double V_PTVTotal= plan.GetVolumeAtDose(PTVTotal, new DoseValue(0, DoseValue.DoseUnit.Percent), VolumePresentation.AbsoluteCm3);
+            double V100 = plan.GetVolumeAtDose(BODY, new DoseValue(100, DoseValue.DoseUnit.Percent), VolumePresentation.AbsoluteCm3);
+            double V100_PTVTotal = plan.GetVolumeAtDose(PTVTotal, new DoseValue(100, DoseValue.DoseUnit.Percent), VolumePresentation.AbsoluteCm3);
+            double V50 = plan.GetVolumeAtDose(BODY, new DoseValue(50, DoseValue.DoseUnit.Percent), VolumePresentation.AbsoluteCm3);
+            double Dmax = plan.GetDoseAtVolume(BODY, 0, VolumePresentation.AbsoluteCm3, DoseValuePresentation.Relative).Dose;
+
+
+            //Calcul des index
+            sb.AppendLine("Indices de qualité du plan :");
+
+            //Conformité : nécessite que la structure PTVTotal soit présente et non vide
+            if (V_PTVTotal > 0) {
+                double CI_RTOG = V100 / V_PTVTotal;
+                string statusCI_RTOG = CI_RTOG < LIMIT_CI_RTOG ? " ✔" : " ~";
+                sb.AppendLine(string.Format("CI (RTOG)     : {0:F2} {1}", CI_RTOG, statusCI_RTOG));
+
+
+                //double CI_Paddick = (0.99 * V_PTVTotal) * (0.99 * V_PTVTotal) / (V100 * V_PTVTotal); //Pour notre normalisation habituelle sur D99%
+                double CI_Paddick = (V100_PTVTotal * V100_PTVTotal) / (V100 * V_PTVTotal); //Pour toute normalisation p.ex. multimet : norm. sur une des lésions
+                string statusCI_Paddick = CI_Paddick > LIMIT_CI_PADDICK ? " ✔" : " ~";
+                sb.AppendLine(string.Format("CI (Paddick)  : {0:F2} {1}", CI_Paddick, statusCI_Paddick));
+            }
+            else
+            {
+                sb.AppendLine("Le volume du PTVTotal est nul, les indices de conformité ne peuvent pas être calculés.");
+            }
+
+            //Gradient index GI
+            double GI = V50 / V100;
+            string statusGI = GI < LIMIT_GI ? " ✔" : " ~";
+            sb.AppendLine(string.Format("GI            : {0:F2} {1}", GI, statusGI));
+
+            //Homogeneity index HI (RTOG)
+            double HI_RTOG = Dmax / 100;
+            string statusHI_RTOG = (HI_RTOG >= LIMIT_MIN_HI_RTOG && HI_RTOG <= LIMIT_MAX_HI_RTOG) ? " ✔" : " ~";
+
+            sb.AppendLine(string.Format("HI (RTOG)     : {0:F2} {1}", HI_RTOG, statusHI_RTOG));
+
+
+            //Ajout des résultats du script comme commentaire du plan
+            //si le plan n'a pas de status TreatApproved et que le Course est ouvert.
+
+            if (plan.ApprovalStatus != PlanSetupApprovalStatus.TreatmentApproved && course.ClinicalStatus != CourseClinicalStatus.Completed)
+            {
+                plan.Comment = sb.ToString();
+            }
+
+            //Affichage des résultats à l'utilisateur
+            MessageBox.Show(sb.ToString());
+
+        }
+
+
+    }
+}

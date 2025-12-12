@@ -1,0 +1,99 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+build/
+TestResults/
+artifacts/
+
+# Visual Studio cache & generated files
+Generated\ Files/
+.vsconfig
+
+# NuGet
+# Legacy packages folder + nupkg outputs
+packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+*.nuget.props
+*.nuget.targets
+
+# Publish output
+publish/
+*.Publish.xml
+*.PublishProfiles/
+
+# IIS / IIS Express
+/.vs/config/
+IISExpress/
+
+# Rider / IntelliJ
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/
+
+# Resharper, DotSettings
+_ReSharper*/
+*.DotSettings.user
+*.DotSettings
+
+# Test results, coverage
+*.trx
+*.coverage
+coverage/
+*.coveragexml
+TestResults/
+
+# Profiling, coverage & tools
+*.dotCover
+*.ncrunch*
+*.localhistory
+
+# Packaging
+*.zip
+*.tar.gz
+
+# Binary files and clutter
+*.exe
+*.dll
+*.pdb
+*.cache
+*.ilk
+*.obj
+*.o
+*.log
+*.tmp
+*.temp
+
+# Database and local files
+*.mdf
+*.ldf
+*.sqlite
+*.db
+*.db-shm
+*.db-wal
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Secrets / credentials — ne pas committer
+# Exemple: si vous avez un fichier contenant des clés (appsettings.*.json, secret stores), ajoutez-le explicitement ici
+secrets.json
+appsettings.Development.json
+.env
+
+# Optional: ignore JetBrains Rider caches, Visual Studio installer, NuGet packages cache, etc.
+.idea/
+_ReSharper*/
+.cache/
